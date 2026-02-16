@@ -1,0 +1,342 @@
+---
+title: "WealthWise — Modèle de Domaine (DDD)"
+---
+classDiagram
+    direction TB
+
+    %% ════════════════════════════════════════════════
+    %% SHARED KERNEL (objets partagés entre contextes)
+    %% ════════════════════════════════════════════════
+
+    namespace SharedKernel {
+        class Money["✅ Money\n«Value Object / record»"] {
+            -BigDecimal amount
+            -Currency currency
+            +of(double, Currency) Money$
+            +zero(Currency) Money$
+            +add(Money) Money
+            +subtract(Money) Money
+            +negate() Money
+            +isPositive() boolean
+            +isNegative() boolean
+            +isZero() boolean
+            +isGreaterThan(Money) boolean
+        }
+
+        class Currency["✅ Currency\n«enum»"] {
+            EUR
+            USD
+            GBP
+        }
+
+        class DateRange["⬜ DateRange\n«Value Object / record»"] {
+            -LocalDate start
+            -LocalDate end
+            +contains(LocalDate) boolean
+            +overlaps(DateRange) boolean
+        }
+
+        class UserId["⬜ UserId\n«Value Object / record»"] {
+            -String value
+            +of(String) UserId$
+            +generate() UserId$
+        }
+    }
+
+    Money --> Currency
+
+    %% ════════════════════════════════════════════════
+    %% ACCOUNT CONTEXT
+    %% ════════════════════════════════════════════════
+
+    namespace AccountContext {
+        class Account["⬜ Account\n«Aggregate Root»"] {
+            -AccountId id
+            -String name
+            -AccountType type
+            -Balance balance
+            -Currency currency
+            -UserId ownerId
+            -LocalDateTime createdAt
+            -boolean closed
+            +create(String, AccountType, Currency, UserId) Account$
+            +credit(Money) void
+            +debit(Money) void
+            +debitWithOverdraftCheck(Money) void
+            +close() void
+            +getDomainEvents() List~DomainEvent~
+        }
+
+        class AccountId["✅ AccountId\n«Value Object / record»"] {
+            -String value
+            +generate() AccountId$
+            +of(String) AccountId$
+        }
+
+        class AccountType["✅ AccountType\n«enum»"] {
+            CHECKING
+            SAVINGS
+            CREDIT_CARD
+            CASH
+        }
+
+        class Balance["✅ Balance\n«Value Object / record»"] {
+            -Money money
+            +of(double, Currency) Balance$
+            +zero(Currency) Balance$
+            +credit(Money) Balance
+            +debit(Money) Balance
+            +canDebit(Money) boolean
+        }
+
+        class AccountRepository["⬜ AccountRepository\n«port / interface»"] {
+            +save(Account) Account
+            +findById(AccountId) Optional~Account~
+            +findByOwnerId(UserId) List~Account~
+            +delete(AccountId) void
+        }
+
+        class AccountCreated["⬜ AccountCreated\n«Domain Event»"] {
+            -AccountId accountId
+            -String name
+            -AccountType type
+            -LocalDateTime occurredAt
+        }
+
+        class AccountBalanceUpdated["⬜ AccountBalanceUpdated\n«Domain Event»"] {
+            -AccountId accountId
+            -Money previousBalance
+            -Money newBalance
+            -LocalDateTime occurredAt
+        }
+    }
+
+    Account *-- AccountId
+    Account *-- AccountType
+    Account *-- Balance
+    Balance --> Money
+    Account ..> AccountCreated : émet
+    Account ..> AccountBalanceUpdated : émet
+    Account ..> AccountRepository : persisted via
+
+    %% ════════════════════════════════════════════════
+    %% TRANSACTION CONTEXT
+    %% ════════════════════════════════════════════════
+
+    namespace TransactionContext {
+        class Transaction["⬜ Transaction\n«Aggregate Root»"] {
+            -TransactionId id
+            -AccountId accountId
+            -Money amount
+            -String description
+            -LocalDate date
+            -TransactionType type
+            -CategoryId categoryId
+            -ConfidenceLevel confidenceLevel
+            -RecurringPattern recurringPattern
+            -LocalDateTime createdAt
+            +create(AccountId, Money, String, LocalDate, TransactionType) Transaction$
+            +categorize(CategoryId, ConfidenceLevel) void
+            +isExpense() boolean
+            +isIncome() boolean
+            +getDomainEvents() List~DomainEvent~
+        }
+
+        class TransactionId["⬜ TransactionId\n«Value Object / record»"] {
+            -String value
+            +generate() TransactionId$
+            +of(String) TransactionId$
+        }
+
+        class TransactionType["⬜ TransactionType\n«enum»"] {
+            INCOME
+            EXPENSE
+            TRANSFER
+        }
+
+        class ConfidenceLevel["⬜ ConfidenceLevel\n«enum»"] {
+            HIGH
+            MEDIUM
+            LOW
+            MANUAL
+        }
+
+        class RecurringPattern["⬜ RecurringPattern\n«Value Object / record»"] {
+            -RecurrenceFrequency frequency
+            -LocalDate nextOccurrence
+            +calculateNext() LocalDate
+        }
+
+        class TransactionRepository["⬜ TransactionRepository\n«port / interface»"] {
+            +save(Transaction) Transaction
+            +findById(TransactionId) Optional~Transaction~
+            +findByAccountId(AccountId) List~Transaction~
+            +findByDateBetween(LocalDate, LocalDate) List~Transaction~
+        }
+
+        class TransactionCreated["⬜ TransactionCreated\n«Domain Event»"] {
+            -TransactionId transactionId
+            -AccountId accountId
+            -Money amount
+            -LocalDateTime occurredAt
+        }
+
+        class TransactionCategorized["⬜ TransactionCategorized\n«Domain Event»"] {
+            -TransactionId transactionId
+            -CategoryId categoryId
+            -ConfidenceLevel confidence
+        }
+    }
+
+    Transaction *-- TransactionId
+    Transaction *-- TransactionType
+    Transaction o-- ConfidenceLevel
+    Transaction o-- RecurringPattern
+    Transaction --> Money
+    Transaction ..> TransactionCreated : émet
+    Transaction ..> TransactionCategorized : émet
+    Transaction ..> TransactionRepository : persisted via
+
+    %% ════════════════════════════════════════════════
+    %% BUDGET CONTEXT
+    %% ════════════════════════════════════════════════
+
+    namespace BudgetContext {
+        class Budget["⬜ Budget\n«Aggregate Root»"] {
+            -BudgetId id
+            -CategoryId categoryId
+            -Money limit
+            -Money spent
+            -BudgetPeriod period
+            -BudgetStatus status
+            -UserId ownerId
+            +create(CategoryId, Money, BudgetPeriod, UserId) Budget$
+            +recordExpense(Money) void
+            +getRemainingAmount() Money
+            +getUsagePercentage() double
+            +getDomainEvents() List~DomainEvent~
+        }
+
+        class BudgetId["⬜ BudgetId\n«Value Object / record»"] {
+            -String value
+            +generate() BudgetId$
+            +of(String) BudgetId$
+        }
+
+        class BudgetPeriod["⬜ BudgetPeriod\n«Value Object / record»"] {
+            -YearMonth month
+            -DateRange range
+            +monthly(YearMonth) BudgetPeriod$
+            +contains(LocalDate) boolean
+        }
+
+        class BudgetStatus["⬜ BudgetStatus\n«enum»"] {
+            ON_TRACK
+            WARNING
+            EXCEEDED
+        }
+
+        class BudgetAlert["⬜ BudgetAlert\n«Entity»"] {
+            -String id
+            -BudgetStatus triggerStatus
+            -double percentage
+            -LocalDateTime triggeredAt
+        }
+
+        class BudgetRepository["⬜ BudgetRepository\n«port / interface»"] {
+            +save(Budget) Budget
+            +findById(BudgetId) Optional~Budget~
+            +findByCategoryAndPeriod(CategoryId, BudgetPeriod) Optional~Budget~
+        }
+
+        class BudgetExceeded["⬜ BudgetExceeded\n«Domain Event»"] {
+            -BudgetId budgetId
+            -Money limit
+            -Money spent
+        }
+
+        class BudgetWarningReached["⬜ BudgetWarningReached\n«Domain Event»"] {
+            -BudgetId budgetId
+            -double percentage
+        }
+    }
+
+    Budget *-- BudgetId
+    Budget *-- BudgetPeriod
+    Budget *-- BudgetStatus
+    Budget *-- BudgetAlert
+    Budget --> Money
+    Budget ..> BudgetExceeded : émet
+    Budget ..> BudgetWarningReached : émet
+    Budget ..> BudgetRepository : persisted via
+
+    %% ════════════════════════════════════════════════
+    %% CATEGORY CONTEXT
+    %% ════════════════════════════════════════════════
+
+    namespace CategoryContext {
+        class Category["⬜ Category\n«Aggregate Root»"] {
+            -CategoryId id
+            -String name
+            -CategoryType type
+            -String color
+            -String icon
+            -UserId ownerId
+            +create(String, CategoryType, UserId) Category$
+            +rename(String) void
+        }
+
+        class CategoryId["⬜ CategoryId\n«Value Object / record»"] {
+            -String value
+            +generate() CategoryId$
+            +of(String) CategoryId$
+        }
+
+        class CategoryType["⬜ CategoryType\n«enum»"] {
+            INCOME
+            EXPENSE
+        }
+
+        class CategoryRepository["⬜ CategoryRepository\n«port / interface»"] {
+            +save(Category) Category
+            +findById(CategoryId) Optional~Category~
+            +findByOwnerId(UserId) List~Category~
+        }
+    }
+
+    Category *-- CategoryId
+    Category *-- CategoryType
+    Category ..> CategoryRepository : persisted via
+
+    %% ════════════════════════════════════════════════
+    %% ANALYTICS CONTEXT (Read Models — CQRS)
+    %% ════════════════════════════════════════════════
+
+    namespace AnalyticsContext {
+        class MonthlyReport["⬜ MonthlyReport\n«Read Model»"] {
+            -YearMonth month
+            -Money totalIncome
+            -Money totalExpenses
+            -Money netBalance
+            -Map categoryBreakdown
+        }
+
+        class TrendAnalysis["⬜ TrendAnalysis\n«Read Model»"] {
+            -List~MonthlyReport~ months
+            -Money averageExpenses
+            -Money averageIncome
+        }
+    }
+
+    MonthlyReport --> Money
+
+    %% ════════════════════════════════════════════════
+    %% RELATIONS INTER-CONTEXTES (par ID uniquement)
+    %% ════════════════════════════════════════════════
+
+    Transaction --> AccountId : référence par ID
+    Budget --> CategoryId : référence par ID
+    Transaction --> CategoryId : référence par ID
+    Account --> UserId : référence par ID
+    Budget --> UserId : référence par ID
+    Category --> UserId : référence par ID

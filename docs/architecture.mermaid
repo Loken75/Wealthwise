@@ -1,0 +1,143 @@
+---
+title: "WealthWise — Architecture en couches (Hexagonale / Clean Architecture)"
+---
+flowchart TB
+    subgraph PRESENTATION["🌐 Couche Présentation (presentation/)"]
+        direction LR
+        AC[AccountController]
+        TC[TransactionController]
+        BC[BudgetController]
+        CC[CategoryController]
+        ANC[AnalyticsController]
+        IC[ImportController]
+    end
+
+    subgraph APPLICATION["⚙️ Couche Application (application/)"]
+        direction TB
+
+        subgraph COMMANDS["Commands (Write — CQRS)"]
+            direction LR
+            C1[CreateAccount]
+            C2[CreateTransaction]
+            C3[CreateBudget]
+            C4[CategorizeTransaction]
+        end
+
+        subgraph QUERIES["Queries (Read — CQRS)"]
+            direction LR
+            Q1[GetAccount]
+            Q2[SearchTransactions]
+            Q3[GetMonthlyReport]
+            Q4[GetCategoryBreakdown]
+        end
+
+        subgraph USECASES["Use Cases"]
+            direction LR
+            U1[ImportBankStatement]
+            U2[AutoCategorization]
+            U3[GenerateReport]
+        end
+    end
+
+    subgraph DOMAIN["💎 Couche Domaine (domain/) — AUCUNE DÉPENDANCE TECHNIQUE"]
+        direction TB
+
+        subgraph SHARED["Shared Kernel"]
+            Money_d["✅ Money"]
+            Currency_d["✅ Currency"]
+            DateRange_d["⬜ DateRange"]
+            UserId_d["⬜ UserId"]
+        end
+
+        subgraph ACCOUNT_CTX["Account Context"]
+            Account_d["⬜ Account ★"]
+            AccountId_d["✅ AccountId"]
+            Balance_d["✅ Balance"]
+            AccountType_d["✅ AccountType"]
+            AccountRepo_d["⬜ AccountRepository\n(interface/port)"]
+        end
+
+        subgraph TX_CTX["Transaction Context"]
+            Transaction_d["⬜ Transaction ★"]
+            TransactionId_d["⬜ TransactionId"]
+            TransactionType_d["⬜ TransactionType"]
+            TxRepo_d["⬜ TransactionRepository\n(interface/port)"]
+        end
+
+        subgraph BUDGET_CTX["Budget Context"]
+            Budget_d["⬜ Budget ★"]
+            BudgetId_d["⬜ BudgetId"]
+            BudgetPeriod_d["⬜ BudgetPeriod"]
+            BudgetRepo_d["⬜ BudgetRepository\n(interface/port)"]
+        end
+
+        subgraph CAT_CTX["Category Context"]
+            Category_d["⬜ Category ★"]
+            CategoryId_d["⬜ CategoryId"]
+            CatRepo_d["⬜ CategoryRepository\n(interface/port)"]
+        end
+    end
+
+    subgraph INFRASTRUCTURE["🔧 Couche Infrastructure (infrastructure/)"]
+        direction TB
+
+        subgraph PERSISTENCE["Persistence (JPA / PostgreSQL)"]
+            JPA1[JpaAccountRepository]
+            JPA2[JpaTransactionRepository]
+            JPA3[JpaBudgetRepository]
+        end
+
+        subgraph MESSAGING["Messaging (RabbitMQ)"]
+            MQ1[EventPublisher]
+            MQ2[BudgetEventListener]
+        end
+
+        subgraph CACHING["Cache (Redis)"]
+            REDIS1[RedisCacheAdapter]
+        end
+
+        subgraph EXTERNAL["APIs Externes"]
+            EXT1[ExchangeRateClient]
+            EXT2[CategorizationApiClient]
+        end
+
+        subgraph PARSING["Parsers"]
+            P1[CsvBankStatementParser]
+            P2[PdfBankStatementParser]
+        end
+
+        subgraph SECURITY["Sécurité"]
+            SEC1[SecurityConfig]
+            SEC2[JwtTokenProvider]
+        end
+    end
+
+    subgraph DATA["🗄️ Services Externes"]
+        direction LR
+        PG[(PostgreSQL)]
+        RD[(Redis)]
+        RMQ[(RabbitMQ)]
+        EXTAPI[/APIs tierces/]
+    end
+
+    %% Flux
+    PRESENTATION -->|"DTOs Request"| APPLICATION
+    APPLICATION -->|"appelle"| DOMAIN
+    APPLICATION -->|"utilise"| INFRASTRUCTURE
+    INFRASTRUCTURE -->|"implémente les ports de"| DOMAIN
+    INFRASTRUCTURE --> DATA
+
+    %% Légende
+    subgraph LEGEND["Légende"]
+        direction LR
+        L1["✅ = Implémenté"]
+        L2["⬜ = À faire"]
+        L3["★ = Aggregate Root"]
+    end
+
+    style DOMAIN fill:#1a472a,stroke:#2d8f4e,color:#fff
+    style APPLICATION fill:#2c3e50,stroke:#3498db,color:#fff
+    style PRESENTATION fill:#4a235a,stroke:#8e44ad,color:#fff
+    style INFRASTRUCTURE fill:#7d3c00,stroke:#e67e22,color:#fff
+    style DATA fill:#1c2833,stroke:#566573,color:#fff
+    style LEGEND fill:#fff,stroke:#ccc,color:#000

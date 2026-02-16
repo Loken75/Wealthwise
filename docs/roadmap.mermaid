@@ -1,0 +1,64 @@
+---
+title: "WealthWise — Roadmap de développement"
+---
+gantt
+    title Plan de développement TDD par phases
+    dateFormat YYYY-MM-DD
+    axisFormat %d/%m
+
+    section Phase 1 · Domain Layer
+        ✅ Money (Value Object)                    :done, money, 2026-02-16, 1d
+        ✅ Currency (enum)                          :done, curr, 2026-02-16, 1d
+        ✅ AccountId, AccountType, Balance           :done, accvo, 2026-02-16, 1d
+        Account (Aggregate Root)                    :active, acc, after accvo, 2d
+        Domain Events (Account)                     : accevt, after acc, 1d
+        TransactionId, TransactionType              : txvo, after accevt, 1d
+        Transaction (Aggregate Root)                : tx, after txvo, 2d
+        Domain Events (Transaction)                 : txevt, after tx, 1d
+        CategoryId, CategoryType                    : catvo, after txevt, 1d
+        Category (Aggregate Root)                   : cat, after catvo, 1d
+        BudgetId, BudgetPeriod, BudgetStatus        : budvo, after cat, 1d
+        Budget (Aggregate Root)                     : bud, after budvo, 2d
+        Domain Events (Budget)                      : budevt, after bud, 1d
+        Domain Exceptions                           : exc, after budevt, 1d
+        UserId, DateRange (Shared)                  : shared, after exc, 1d
+
+    section Phase 2 · Application Layer
+        CreateAccountCommandHandler                 : cmdacc, after shared, 2d
+        CreateTransactionCommandHandler             : cmdtx, after cmdacc, 2d
+        CreateBudgetCommandHandler                  : cmdbud, after cmdtx, 2d
+        Query Handlers (Read)                       : qry, after cmdbud, 2d
+        Use Cases (Import, AutoCategorize)          : uc, after qry, 3d
+
+    section Phase 3 · Infrastructure Layer
+        PostgreSQL + JPA Entities                   : jpa, after uc, 3d
+        Repository Adapters                         : repo, after jpa, 2d
+        Flyway Migrations                           : fly, after repo, 1d
+        Tests Intégration (Testcontainers)          : testint, after fly, 3d
+        Redis Cache                                 : redis, after testint, 2d
+        RabbitMQ Events                             : rmq, after redis, 2d
+
+    section Phase 4 · Presentation Layer
+        REST Controllers                            : ctrl, after rmq, 3d
+        DTOs Request/Response                       : dto, after ctrl, 1d
+        OpenAPI Documentation                       : api, after dto, 1d
+        Security (JWT)                              : sec, after api, 2d
+        Global Exception Handler                    : exh, after sec, 1d
+
+    section Phase 5 · Tests avancés
+        Tests BDD Cucumber                          : bdd, after exh, 3d
+        Tests ArchUnit                              : arch, after bdd, 1d
+        Tests End-to-End                            : e2e, after arch, 2d
+
+    section Phase 6 · DevOps
+        Dockerfile Multi-stage                      : dock, after e2e, 1d
+        docker-compose (dev)                        : dcomp, after dock, 1d
+        CI/CD GitHub Actions                        : ci, after dcomp, 2d
+        Kubernetes manifests                        : k8s, after ci, 3d
+
+    section Phase 7 · Frontend Angular
+        Setup Angular + Routing                     : ang, after k8s, 2d
+        Dashboard                                   : dash, after ang, 3d
+        Transactions CRUD                           : txui, after dash, 3d
+        Budgets UI                                  : budui, after txui, 3d
+        Analytics / Reports                         : anui, after budui, 3d
