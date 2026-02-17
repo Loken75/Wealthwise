@@ -1,0 +1,26 @@
+@import '../../shared/styles/page-common';
+
+.type-toggle { display: flex; gap: 8px; margin-bottom: 20px; background: var(--bg-subtle); border-radius: 10px; padding: 4px; }
+.toggle-btn { flex: 1; padding: 10px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; background: transparent; color: var(--text-muted); transition: all 0.15s;
+  &.active { background: var(--accent); color: white; }
+}
+
+.color-picker { display: flex; gap: 8px; flex-wrap: wrap; }
+.color-swatch { width: 36px; height: 36px; border-radius: 10px; border: 2px solid transparent; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center;
+  &:hover { transform: scale(1.1); }
+  &.selected { border-color: var(--text-primary); box-shadow: 0 0 0 2px var(--card-bg), 0 0 0 4px var(--text-primary); }
+}
+
+.category-section { margin-bottom: 32px;
+  .section-title { font-family: var(--font-display); font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 16px; }
+  .section-empty { font-size: 14px; color: var(--text-muted); }
+}
+
+.category-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+.category-chip {
+  display: flex; align-items: center; gap: 10px; padding: 10px 18px;
+  background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px;
+  font-size: 14px; font-weight: 500; color: var(--text-primary); transition: transform 0.1s;
+  &:hover { transform: translateY(-1px); }
+  .chip-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+}

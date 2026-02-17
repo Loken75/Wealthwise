@@ -1,0 +1,70 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Budgets</h1>
+      <p class="page-subtitle">Suivez vos limites de dépenses</p>
+    </div>
+    <button class="btn btn-primary" (click)="toggleForm()">{{ showForm ? '✕ Annuler' : '+ Nouveau budget' }}</button>
+  </header>
+
+  @if (showForm) {
+    <div class="form-card">
+      <h3>Nouveau budget</h3>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="category">Catégorie</label>
+          <select id="category" [(ngModel)]="newBudget.categoryId" class="form-input">
+            <option value="" disabled>Sélectionner une catégorie</option>
+            @for (cat of categories; track cat.id) { <option [value]="cat.id">{{ cat.name }}</option> }
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="limit">Limite mensuelle (€)</label>
+          <input id="limit" type="number" [(ngModel)]="newBudget.limitAmount" placeholder="0.00" class="form-input" min="1" step="10">
+        </div>
+        <div class="form-group">
+          <label for="period">Mois</label>
+          <input id="period" type="month" [(ngModel)]="newBudget.periodMonth" class="form-input">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" (click)="toggleForm()">Annuler</button>
+        <button class="btn btn-primary" (click)="createBudget()" [disabled]="!newBudget.categoryId || !newBudget.limitAmount">Créer le budget</button>
+      </div>
+    </div>
+  }
+
+  @if (budgets.length === 0) {
+    <div class="empty-state-full">
+      <div class="empty-icon">💰</div>
+      <h3>Aucun budget</h3>
+      <p>Définissez des limites pour mieux contrôler vos finances.</p>
+      <button class="btn btn-primary" (click)="toggleForm()">+ Créer un budget</button>
+    </div>
+  } @else {
+    <div class="budget-cards">
+      @for (budget of budgets; track budget.id) {
+        <div class="budget-card" [class.warning]="budget.status === 'WARNING'" [class.exceeded]="budget.status === 'EXCEEDED'">
+          <div class="budget-card-header">
+            <div class="budget-category">
+              <span class="budget-dot" [style.background]="getCategoryColor(budget.categoryId)"></span>
+              {{ getCategoryName(budget.categoryId) }}
+            </div>
+            <span class="budget-status" [class]="budget.status.toLowerCase()">{{ getStatusLabel(budget.status) }}</span>
+          </div>
+          <div class="budget-amounts-row">
+            <span class="budget-spent">{{ formatCurrency(budget.spent) }}</span>
+            <span class="budget-limit">sur {{ formatCurrency(budget.limitAmount) }}</span>
+          </div>
+          <div class="budget-bar">
+            <div class="budget-bar-fill" [class.warning]="budget.status === 'WARNING'" [class.exceeded]="budget.status === 'EXCEEDED'" [style.width.%]="getUsagePercent(budget)"></div>
+          </div>
+          <div class="budget-footer">
+            <span class="budget-period-label">{{ budget.periodMonth }}</span>
+            <span class="budget-remaining">Reste : {{ formatCurrency(budget.limitAmount - budget.spent) }}</span>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

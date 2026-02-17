@@ -93,7 +93,9 @@ public class TransactionController {
                     .map(TransactionResponse::from)
                     .toList();
         }
-        // Si pas de filtre, retourner une liste vide (on n'a pas de findAll)
-        return List.of();
+        // Pas de filtre → toutes les transactions
+        return transactionRepository.findAll().stream()
+                .map(TransactionResponse::from)
+                .toList();
     }
 }

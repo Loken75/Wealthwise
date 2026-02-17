@@ -19,6 +19,7 @@ public interface TransactionRepository {
     Optional<Transaction> findById(TransactionId id);
 
     List<Transaction> findByAccountId(AccountId accountId);
+    List<Transaction> findAll();
 
     List<Transaction> findByDateBetween(LocalDate start, LocalDate end);
 

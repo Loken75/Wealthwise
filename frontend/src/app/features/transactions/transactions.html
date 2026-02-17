@@ -1,0 +1,75 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Transactions</h1>
+      <p class="page-subtitle">{{ transactions.length }} transaction{{ transactions.length > 1 ? 's' : '' }}</p>
+    </div>
+    <button class="btn btn-primary" (click)="toggleForm()">{{ showForm ? '✕ Annuler' : '+ Nouvelle transaction' }}</button>
+  </header>
+
+  @if (showForm) {
+    <div class="form-card">
+      <h3>Nouvelle transaction</h3>
+      <div class="type-toggle">
+        <button class="toggle-btn" [class.active]="newTx.type === 'INCOME'" [class.income]="newTx.type === 'INCOME'" (click)="setType('INCOME')">Revenu</button>
+        <button class="toggle-btn" [class.active]="newTx.type === 'EXPENSE'" [class.expense]="newTx.type === 'EXPENSE'" (click)="setType('EXPENSE')">Dépense</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="account">Compte</label>
+          <select id="account" [(ngModel)]="newTx.accountId" class="form-input">
+            <option value="" disabled>Sélectionner un compte</option>
+            @for (a of accounts; track a.id) { <option [value]="a.id">{{ a.name }}</option> }
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="amount">Montant</label>
+          <input id="amount" type="number" [(ngModel)]="newTx.amount" placeholder="0.00" class="form-input form-input-amount" min="0.01" step="0.01">
+        </div>
+        <div class="form-group">
+          <label for="description">Description</label>
+          <input id="description" type="text" [(ngModel)]="newTx.description" placeholder="ex: Courses Carrefour" class="form-input">
+        </div>
+        <div class="form-group">
+          <label for="date">Date</label>
+          <input id="date" type="date" [(ngModel)]="newTx.date" class="form-input">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" (click)="toggleForm()">Annuler</button>
+        <button class="btn btn-primary" (click)="createTransaction()" [disabled]="!newTx.accountId || !newTx.amount || !newTx.description.trim()">Enregistrer</button>
+      </div>
+    </div>
+  }
+
+  <div class="table-card">
+    @if (transactions.length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon">📊</div>
+        <h3>Aucune transaction</h3>
+        <p>Ajoutez votre première transaction.</p>
+        <button class="btn btn-primary" (click)="toggleForm()">+ Ajouter</button>
+      </div>
+    } @else {
+      <table class="data-table">
+        <thead><tr><th>Date</th><th>Description</th><th>Compte</th><th>Catégorie</th><th class="text-right">Montant</th></tr></thead>
+        <tbody>
+          @for (tx of transactions; track tx.id) {
+            <tr>
+              <td class="cell-date">{{ tx.date }}</td>
+              <td class="cell-description">
+                <div class="tx-indicator-inline" [class.income]="tx.type === 'INCOME'" [class.expense]="tx.type === 'EXPENSE'"></div>
+                {{ tx.description }}
+              </td>
+              <td class="cell-muted">{{ getAccountName(tx.accountId) }}</td>
+              <td class="cell-muted">{{ getCategoryName(tx.categoryId) }}</td>
+              <td class="cell-amount" [class.positive]="tx.type === 'INCOME'" [class.negative]="tx.type === 'EXPENSE'">
+                {{ tx.type === 'INCOME' ? '+' : '-' }}{{ formatCurrency(tx.amount) }}
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+</div>

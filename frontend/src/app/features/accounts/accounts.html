@@ -1,0 +1,74 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Comptes</h1>
+      <p class="page-subtitle">Gérez vos comptes bancaires</p>
+    </div>
+    <button class="btn btn-primary" (click)="toggleForm()">{{ showForm ? '✕ Annuler' : '+ Nouveau compte' }}</button>
+  </header>
+
+  @if (showForm) {
+    <div class="form-card">
+      <h3>Nouveau compte</h3>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="name">Nom du compte</label>
+          <input id="name" type="text" [(ngModel)]="newAccount.name" placeholder="ex: Compte Courant BNP" class="form-input" autofocus>
+        </div>
+        <div class="form-group">
+          <label>Type de compte</label>
+          <div class="type-selector">
+            @for (t of accountTypes; track t.value) {
+              <button class="type-option" [class.selected]="newAccount.type === t.value" (click)="newAccount.type = t.value">
+                <span class="type-icon">{{ t.icon }}</span>
+                <span class="type-label">{{ t.label }}</span>
+              </button>
+            }
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="currency">Devise</label>
+          <select id="currency" [(ngModel)]="newAccount.currency" class="form-input">
+            <option value="EUR">EUR — Euro</option>
+            <option value="USD">USD — Dollar</option>
+            <option value="GBP">GBP — Livre</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" (click)="toggleForm()">Annuler</button>
+        <button class="btn btn-primary" (click)="createAccount()" [disabled]="!newAccount.name.trim()">Créer le compte</button>
+      </div>
+    </div>
+  }
+
+  @if (accounts.length > 0) {
+    <div class="total-bar">
+      <span>Solde total</span>
+      <span class="total-amount">{{ formatCurrency(getTotalBalance()) }}</span>
+    </div>
+  }
+
+  <div class="accounts-grid">
+    @if (accounts.length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon">🏦</div>
+        <h3>Aucun compte</h3>
+        <p>Créez votre premier compte pour commencer.</p>
+        <button class="btn btn-primary" (click)="toggleForm()">+ Créer un compte</button>
+      </div>
+    } @else {
+      @for (account of accounts; track account.id) {
+        <div class="account-card" [class.closed]="account.closed">
+          <div class="account-card-header">
+            <div class="account-icon">{{ getTypeIcon(account.type) }}</div>
+            @if (account.closed) { <span class="badge badge-closed">Fermé</span> }
+          </div>
+          <div class="account-card-name">{{ account.name }}</div>
+          <div class="account-card-type">{{ getTypeLabel(account.type) }} · {{ account.currency }}</div>
+          <div class="account-card-balance" [class.negative]="account.balance < 0">{{ formatCurrency(account.balance) }}</div>
+        </div>
+      }
+    }
+  </div>
+</div>

@@ -1,0 +1,123 @@
+<div class="dashboard">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Tableau de bord</h1>
+      <p class="page-subtitle">Vue d'ensemble de vos finances</p>
+    </div>
+  </header>
+
+  <div class="summary-cards">
+    <div class="summary-card card-balance">
+      <div class="card-label">Solde total</div>
+      <div class="card-value">{{ formatCurrency(totalBalance) }}</div>
+      <div class="card-meta">{{ accounts.length }} compte{{ accounts.length > 1 ? 's' : '' }}</div>
+    </div>
+    <div class="summary-card card-income">
+      <div class="card-label">Revenus</div>
+      <div class="card-value positive">+{{ formatCurrency(totalIncome) }}</div>
+      <div class="card-meta">Ce mois</div>
+    </div>
+    <div class="summary-card card-expenses">
+      <div class="card-label">Dépenses</div>
+      <div class="card-value negative">-{{ formatCurrency(totalExpenses) }}</div>
+      <div class="card-meta">Ce mois</div>
+    </div>
+  </div>
+
+  <div class="dashboard-grid">
+    <section class="card">
+      <div class="card-header">
+        <h2>Comptes</h2>
+        <a routerLink="/accounts" class="card-link">Voir tout →</a>
+      </div>
+      <div class="card-body">
+        @if (accounts.length === 0) {
+          <div class="empty-state">
+            <p>Aucun compte</p>
+            <a routerLink="/accounts" class="btn btn-sm">Créer un compte</a>
+          </div>
+        } @else {
+          <div class="account-list">
+            @for (account of accounts; track account.id) {
+              <div class="account-row">
+                <div class="account-icon">{{ getAccountIcon(account.type) }}</div>
+                <div class="account-info">
+                  <div class="account-name">{{ account.name }}</div>
+                  <div class="account-type">{{ getAccountTypeLabel(account.type) }}</div>
+                </div>
+                <div class="account-balance" [class.negative]="account.balance < 0">
+                  {{ formatCurrency(account.balance) }}
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2>Dernières transactions</h2>
+        <a routerLink="/transactions" class="card-link">Voir tout →</a>
+      </div>
+      <div class="card-body">
+        @if (transactions.length === 0) {
+          <div class="empty-state">
+            <p>Aucune transaction</p>
+            <a routerLink="/transactions" class="btn btn-sm">Ajouter</a>
+          </div>
+        } @else {
+          <div class="transaction-list">
+            @for (tx of transactions; track tx.id) {
+              <div class="transaction-row">
+                <div class="tx-indicator" [class.income]="tx.type === 'INCOME'" [class.expense]="tx.type === 'EXPENSE'"></div>
+                <div class="tx-info">
+                  <div class="tx-description">{{ tx.description }}</div>
+                  <div class="tx-date">{{ tx.date }}</div>
+                </div>
+                <div class="tx-amount" [class.positive]="tx.type === 'INCOME'" [class.negative]="tx.type === 'EXPENSE'">
+                  {{ tx.type === 'INCOME' ? '+' : '-' }}{{ formatCurrency(tx.amount) }}
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2>Budgets</h2>
+        <a routerLink="/budgets" class="card-link">Voir tout →</a>
+      </div>
+      <div class="card-body">
+        @if (budgets.length === 0) {
+          <div class="empty-state">
+            <p>Aucun budget configuré</p>
+            <a routerLink="/budgets" class="btn btn-sm">Créer un budget</a>
+          </div>
+        } @else {
+          <div class="budget-list">
+            @for (budget of budgets; track budget.id) {
+              <div class="budget-row">
+                <div class="budget-info">
+                  <div class="budget-period">{{ budget.periodMonth }}</div>
+                  <div class="budget-progress-bar">
+                    <div class="budget-progress-fill"
+                         [class.warning]="budget.status === 'WARNING'"
+                         [class.exceeded]="budget.status === 'EXCEEDED'"
+                         [style.width.%]="Math.min((budget.spent / budget.limitAmount) * 100, 100)">
+                    </div>
+                  </div>
+                </div>
+                <div class="budget-amounts">
+                  {{ formatCurrency(budget.spent) }} / {{ formatCurrency(budget.limitAmount) }}
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </section>
+  </div>
+</div>

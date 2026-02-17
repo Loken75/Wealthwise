@@ -1,0 +1,65 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1 class="page-title">Catégories</h1>
+      <p class="page-subtitle">Organisez vos revenus et dépenses</p>
+    </div>
+    <button class="btn btn-primary" (click)="toggleForm()">{{ showForm ? '✕ Annuler' : '+ Nouvelle catégorie' }}</button>
+  </header>
+
+  @if (showForm) {
+    <div class="form-card">
+      <h3>Nouvelle catégorie</h3>
+      <div class="type-toggle">
+        <button class="toggle-btn" [class.active]="newCategory.type === 'EXPENSE'" (click)="setType('EXPENSE')">Dépense</button>
+        <button class="toggle-btn" [class.active]="newCategory.type === 'INCOME'" (click)="setType('INCOME')">Revenu</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="name">Nom</label>
+          <input id="name" type="text" [(ngModel)]="newCategory.name" placeholder="ex: Alimentation" class="form-input" autofocus>
+        </div>
+        <div class="form-group">
+          <label>Couleur</label>
+          <div class="color-picker">
+            @for (color of presetColors; track color) {
+              <button class="color-swatch" [style.background]="color" [class.selected]="newCategory.color === color" (click)="setColor(color)">
+                @if (newCategory.color === color) {
+                  <svg viewBox="0 0 24 24" width="14" height="14"><polyline points="20 6 9 17 4 12" fill="none" stroke="white" stroke-width="3"/></svg>
+                }
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" (click)="toggleForm()">Annuler</button>
+        <button class="btn btn-primary" (click)="createCategory()" [disabled]="!newCategory.name.trim()">Créer</button>
+      </div>
+    </div>
+  }
+
+  <section class="category-section">
+    <h2 class="section-title">Dépenses</h2>
+    @if (getExpenseCategories().length === 0) { <p class="section-empty">Aucune catégorie de dépense</p> }
+    @else {
+      <div class="category-grid">
+        @for (cat of getExpenseCategories(); track cat.id) {
+          <div class="category-chip"><span class="chip-dot" [style.background]="cat.color"></span><span class="chip-name">{{ cat.name }}</span></div>
+        }
+      </div>
+    }
+  </section>
+
+  <section class="category-section">
+    <h2 class="section-title">Revenus</h2>
+    @if (getIncomeCategories().length === 0) { <p class="section-empty">Aucune catégorie de revenu</p> }
+    @else {
+      <div class="category-grid">
+        @for (cat of getIncomeCategories(); track cat.id) {
+          <div class="category-chip"><span class="chip-dot" [style.background]="cat.color"></span><span class="chip-name">{{ cat.name }}</span></div>
+        }
+      </div>
+    }
+  </section>
+</div>

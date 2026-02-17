@@ -63,6 +63,12 @@ public class JpaTransactionRepositoryAdapter implements TransactionRepository {
     }
 
     @Override
+    public List<Transaction> findAll() {
+        return jpaRepository.findAll().stream()
+                .map(TransactionMapper::toDomain)
+                .toList();
+    }
+
     public void deleteById(TransactionId id) {
         jpaRepository.deleteById(id.value());
     }

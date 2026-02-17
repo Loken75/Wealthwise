@@ -1,0 +1,28 @@
+@import '../../shared/styles/page-common';
+
+.type-toggle { display: flex; gap: 8px; margin-bottom: 20px; background: var(--bg-subtle); border-radius: 10px; padding: 4px; }
+.toggle-btn {
+  flex: 1; padding: 10px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; background: transparent; color: var(--text-muted); transition: all 0.15s;
+  &.active.income { background: var(--color-success); color: white; }
+  &.active.expense { background: var(--color-danger); color: white; }
+}
+.form-input-amount { font-family: var(--font-mono); font-size: 18px; font-weight: 600; }
+
+.table-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; overflow: hidden; }
+.data-table {
+  width: 100%; border-collapse: collapse;
+  th { text-align: left; padding: 14px 20px; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; background: var(--bg-subtle); border-bottom: 1px solid var(--card-border);
+    &.text-right { text-align: right; }
+  }
+  td { padding: 14px 20px; font-size: 14px; border-bottom: 1px solid var(--card-border); color: var(--text-primary); }
+  tbody tr { transition: background 0.1s; &:hover { background: var(--bg-hover); } &:last-child td { border-bottom: none; } }
+  .cell-date { font-family: var(--font-mono); font-size: 13px; color: var(--text-muted); white-space: nowrap; }
+  .cell-description { font-weight: 500; display: flex; align-items: center; gap: 10px; }
+  .tx-indicator-inline { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    &.income { background: var(--color-success); } &.expense { background: var(--color-danger); }
+  }
+  .cell-muted { color: var(--text-muted); font-size: 13px; }
+  .cell-amount { text-align: right; font-family: var(--font-mono); font-weight: 600; white-space: nowrap;
+    &.positive { color: var(--color-success); } &.negative { color: var(--color-danger); }
+  }
+}
