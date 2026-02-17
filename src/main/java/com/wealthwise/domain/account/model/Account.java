@@ -13,36 +13,24 @@ import java.util.List;
 
 /**
  * Aggregate Root du contexte Account.
- *
- * DIFFERENCE CLE avec un Value Object :
- * - Un Value Object (Money, Balance) est un record immutable sans identite.
- * - Un Aggregate Root est une CLASSE MUTABLE avec une identite (AccountId).
- *   Deux comptes avec le meme nom ne sont pas "le meme compte".
- *
- * L'Aggregate Root est le GARDIEN des invariants metier :
- * - On ne peut pas debiter plus que le solde
- * - On ne peut pas operer sur un compte ferme
- * - On ne peut pas melanger les devises
- *
- * Il collecte les Domain Events dans une liste interne.
- * La couche Application les recupere et les publie apres la persistance.
- *
- * NOTE : ce n'est PAS un record car un Aggregate est mutable
- * (son etat change via credit/debit/close). C'est une classe classique.
  */
 public class Account {
 
-    private final AccountId id;
-    private final String name;
-    private final AccountType type;
-    private final Currency currency;
-    private final LocalDateTime createdAt;
+    private AccountId id;
+    private String name;
+    private AccountType type;
+    private Currency currency;
+    private LocalDateTime createdAt;
     private Balance balance;
     private boolean closed;
 
     private final List<DomainEvent> domainEvents = new ArrayList<>();
 
-    // ========== Constructeur prive ==========
+    // ========== Constructeurs ==========
+
+    private Account() {
+        // Utilisé par reconstitute()
+    }
 
     private Account(AccountId id, String name, AccountType type, Currency currency) {
         this.id = id;
@@ -54,8 +42,11 @@ public class Account {
         this.createdAt = LocalDateTime.now();
     }
 
-    // ========== Factory Method ==========
+    // ========== Factory Methods ==========
 
+    /**
+     * Crée un nouveau compte. Valide les paramètres et émet AccountCreated.
+     */
     public static Account create(String name, AccountType type, Currency currency) {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Account name must not be null or blank");
@@ -66,7 +57,25 @@ public class Account {
         return account;
     }
 
-    // ========== Comportements metier ==========
+    /**
+     * Reconstitue un Account depuis la base de données.
+     * Pas de validation ni d'événements — les données sont déjà valides.
+     */
+    public static Account reconstitute(AccountId id, String name, AccountType type,
+                                        Currency currency, Money balance, boolean closed,
+                                        LocalDateTime createdAt) {
+        Account account = new Account();
+        account.id = id;
+        account.name = name;
+        account.type = type;
+        account.currency = currency;
+        account.balance = new Balance(balance);
+        account.closed = closed;
+        account.createdAt = createdAt;
+        return account;
+    }
+
+    // ========== Comportements métier ==========
 
     public void credit(Money amount) {
         requireOpen();
@@ -131,7 +140,7 @@ public class Account {
     public boolean isClosed() { return closed; }
     public LocalDateTime getCreatedAt() { return createdAt; }
 
-    // ========== Methodes internes ==========
+    // ========== Méthodes internes ==========
 
     private void requireOpen() {
         if (this.closed) {

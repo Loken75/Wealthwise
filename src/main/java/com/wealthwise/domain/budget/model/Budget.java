@@ -15,60 +15,34 @@ import java.util.List;
 /**
  * Aggregate Root du contexte Budget.
  *
- * Un Budget définit une limite de dépenses pour une catégorie donnée
- * sur une période (un mois). Par exemple : "200€ max en Alimentation en février 2026".
- *
- * Le Budget suit les dépenses enregistrées et change de statut automatiquement :
- * - ON_TRACK : < 80% de la limite
- * - WARNING  : entre 80% et 100%
- * - EXCEEDED : > 100%
- *
- * Les seuils (80% pour WARNING) sont des constantes métier modifiables.
- * On pourrait les rendre configurables par utilisateur plus tard.
- *
- * Règles métier :
- * - La limite doit être positive
- * - Le montant dépensé ne peut pas être négatif
- * - Les événements WARNING et EXCEEDED ne sont émis qu'une seule fois
- *   (pas à chaque dépense qui maintient le même statut)
+ * Gère un budget mensuel pour une catégorie de dépenses.
+ * Émet des événements quand des seuils sont atteints (80% et 100%).
  */
 public class Budget {
 
-    private static final double WARNING_THRESHOLD = 0.80; // 80%
+    /** Seuil d'avertissement : 80% du budget utilisé */
+    public static final double WARNING_THRESHOLD = 0.80;
 
-    private final BudgetId id;
-    private final CategoryId categoryId;
-    private final Money limit;
-    private final BudgetPeriod period;
-    private final Currency currency;
-    private final LocalDateTime createdAt;
-
+    private BudgetId id;
+    private CategoryId categoryId;
+    private Money limit;
+    private BudgetPeriod period;
     private Money spent;
     private BudgetStatus status;
+    private LocalDateTime createdAt;
 
     private final List<DomainEvent> domainEvents = new ArrayList<>();
 
-    // ========== Constructeur privé ==========
+    // ========== Constructeurs ==========
 
-    private Budget(BudgetId id, CategoryId categoryId, Money limit, BudgetPeriod period) {
-        this.id = id;
-        this.categoryId = categoryId;
-        this.limit = limit;
-        this.period = period;
-        this.currency = limit.currency();
-        this.spent = Money.zero(limit.currency());
-        this.status = BudgetStatus.ON_TRACK;
-        this.createdAt = LocalDateTime.now();
+    private Budget() {
+        // Utilisé par reconstitute()
     }
 
-    // ========== Factory Method ==========
+    // ========== Factory Methods ==========
 
     /**
-     * Crée un nouveau budget mensuel pour une catégorie.
-     *
-     * @param categoryId la catégorie concernée
-     * @param limit      le montant maximum autorisé (doit être positif)
-     * @param period     la période du budget (un mois)
+     * Crée un nouveau budget. Valide les paramètres.
      */
     public static Budget create(CategoryId categoryId, Money limit, BudgetPeriod period) {
         if (categoryId == null) {
@@ -81,27 +55,44 @@ public class Budget {
             throw new IllegalArgumentException("BudgetPeriod must not be null");
         }
 
-        return new Budget(BudgetId.generate(), categoryId, limit, period);
+        Budget budget = new Budget();
+        budget.id = BudgetId.generate();
+        budget.categoryId = categoryId;
+        budget.limit = limit;
+        budget.period = period;
+        budget.spent = Money.zero(limit.currency());
+        budget.status = BudgetStatus.ON_TRACK;
+        budget.createdAt = LocalDateTime.now();
+        return budget;
+    }
+
+    /**
+     * Reconstitue un Budget depuis la base de données.
+     * Pas de validation ni d'événements.
+     */
+    public static Budget reconstitute(BudgetId id, CategoryId categoryId, Money limit,
+                                       BudgetPeriod period, Money spent, BudgetStatus status,
+                                       LocalDateTime createdAt) {
+        Budget budget = new Budget();
+        budget.id = id;
+        budget.categoryId = categoryId;
+        budget.limit = limit;
+        budget.period = period;
+        budget.spent = spent;
+        budget.status = status;
+        budget.createdAt = createdAt;
+        return budget;
     }
 
     // ========== Comportements métier ==========
 
     /**
      * Enregistre une dépense dans ce budget.
-     * Met à jour le montant dépensé et recalcule le statut.
-     * Émet des événements si un seuil est franchi.
-     *
-     * @param amount le montant de la dépense (doit être positif)
+     * Met à jour le statut et émet des événements si des seuils sont franchis.
      */
     public void recordExpense(Money amount) {
         if (amount == null || !amount.isPositive()) {
             throw new IllegalArgumentException("Expense amount must be positive");
-        }
-        if (amount.currency() != this.currency) {
-            throw new IllegalArgumentException(
-                    "Expected currency %s but got %s"
-                            .formatted(this.currency, amount.currency())
-            );
         }
 
         this.spent = this.spent.add(amount);
@@ -109,51 +100,20 @@ public class Budget {
     }
 
     /**
-     * Retourne le montant restant avant d'atteindre la limite.
-     * Peut être négatif si le budget est dépassé.
+     * Calcule le montant restant (peut être négatif si dépassé).
      */
     public Money getRemainingAmount() {
         return this.limit.subtract(this.spent);
     }
 
     /**
-     * Retourne le pourcentage de consommation du budget (0.0 à 1.0+).
-     * Exemple : 0.75 = 75% du budget utilisé.
+     * Calcule le pourcentage d'utilisation (0.0 à 1.0+).
      */
     public double getUsagePercentage() {
-        if (this.limit.isZero()) return 0.0;
-        return this.spent.amount()
-                .divide(this.limit.amount(), 4, java.math.RoundingMode.HALF_UP)
-                .doubleValue();
-    }
-
-    // ========== Logique interne ==========
-
-    /**
-     * Recalcule le statut du budget et émet des événements si nécessaire.
-     * Les événements ne sont émis que lors d'un CHANGEMENT de statut,
-     * pas à chaque dépense.
-     */
-    private void updateStatus() {
-        BudgetStatus previousStatus = this.status;
-        double usage = getUsagePercentage();
-
-        if (usage > 1.0) {
-            this.status = BudgetStatus.EXCEEDED;
-        } else if (usage >= WARNING_THRESHOLD) {
-            this.status = BudgetStatus.WARNING;
-        } else {
-            this.status = BudgetStatus.ON_TRACK;
+        if (this.limit.isZero()) {
+            return 0.0;
         }
-
-        // Émettre un événement seulement si le statut a changé
-        if (this.status != previousStatus) {
-            if (this.status == BudgetStatus.EXCEEDED) {
-                domainEvents.add(new BudgetExceeded(this.id, this.limit, this.spent));
-            } else if (this.status == BudgetStatus.WARNING) {
-                domainEvents.add(new BudgetWarningReached(this.id, usage));
-            }
-        }
+        return this.spent.amount().doubleValue() / this.limit.amount().doubleValue();
     }
 
     // ========== Domain Events ==========
@@ -171,9 +131,35 @@ public class Budget {
     public BudgetId getId() { return id; }
     public CategoryId getCategoryId() { return categoryId; }
     public Money getLimit() { return limit; }
-    public Money getSpent() { return spent; }
     public BudgetPeriod getPeriod() { return period; }
+    public Money getSpent() { return spent; }
     public BudgetStatus getStatus() { return status; }
-    public Currency getCurrency() { return currency; }
+    public Currency getCurrency() { return limit.currency(); }
     public LocalDateTime getCreatedAt() { return createdAt; }
+
+    // ========== Méthodes internes ==========
+
+    /**
+     * Met à jour le statut et émet des événements UNIQUEMENT au changement de seuil.
+     */
+    private void updateStatus() {
+        double usage = getUsagePercentage();
+        BudgetStatus previousStatus = this.status;
+
+        if (usage >= 1.0) {
+            this.status = BudgetStatus.EXCEEDED;
+            if (previousStatus != BudgetStatus.EXCEEDED) {
+                domainEvents.add(new BudgetExceeded(
+                        this.id, this.limit, this.spent, LocalDateTime.now()
+                ));
+            }
+        } else if (usage >= WARNING_THRESHOLD) {
+            this.status = BudgetStatus.WARNING;
+            if (previousStatus == BudgetStatus.ON_TRACK) {
+                domainEvents.add(new BudgetWarningReached(
+                        this.id, usage, LocalDateTime.now()
+                ));
+            }
+        }
+    }
 }
